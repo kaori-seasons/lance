@@ -78,6 +78,13 @@
             <version>${lance.version}</version>
         </dependency>
 
+        <!-- Lance Namespace API -->
+        <dependency>
+            <groupId>org.lance</groupId>
+            <artifactId>lance-namespace</artifactId>
+            <version>${lance.version}</version>
+        </dependency>
+
         <!-- ==================== Apache Arrow ==================== -->
         <dependency>
             <groupId>org.apache.arrow</groupId>

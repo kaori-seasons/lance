@@ -53,7 +53,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * Lance Connector end-to-end integration tests.
+ * Lance Connector 端到端集成测试。
  */
 class LanceConnectorITCase {
 
@@ -70,7 +70,7 @@ class LanceConnectorITCase {
         datasetPath = tempDir.resolve("test_e2e_dataset").toString();
         warehousePath = tempDir.resolve("test_e2e_warehouse").toString();
 
-        // Create test Schema
+        // 创建测试 Schema
         List<RowType.RowField> fields = new ArrayList<>();
         fields.add(new RowType.RowField("id", new BigIntType()));
         fields.add(new RowType.RowField("content", new VarCharType()));
@@ -85,36 +85,36 @@ class LanceConnectorITCase {
     }
 
     @Test
-    @DisplayName("Test complete configuration options workflow")
+    @DisplayName("测试完整的配置选项流程")
     void testCompleteOptionsWorkflow() {
-        // Build complete configuration
+        // 构建完整配置
         LanceOptions options = LanceOptions.builder()
                 .path(datasetPath)
-                // Source configuration
+                // Source 配置
                 .readBatchSize(512)
                 .readColumns(Arrays.asList("id", "content", "embedding"))
                 .readFilter("id > 0")
-                // Sink configuration
+                // Sink 配置
                 .writeBatchSize(256)
                 .writeMode(WriteMode.APPEND)
                 .writeMaxRowsPerFile(100000)
-                // Index configuration
+                // 索引配置
                 .indexType(IndexType.IVF_PQ)
                 .indexColumn("embedding")
                 .indexNumPartitions(128)
                 .indexNumSubVectors(16)
                 .indexNumBits(8)
-                // Vector search configuration
+                // 向量检索配置
                 .vectorColumn("embedding")
                 .vectorMetric(MetricType.L2)
                 .vectorNprobes(20)
                 .vectorEf(100)
-                // Catalog configuration
+                // Catalog 配置
                 .defaultDatabase("default")
                 .warehouse(warehousePath)
                 .build();
 
-        // Verify all configurations
+        // 验证所有配置
         assertThat(options.getPath()).isEqualTo(datasetPath);
         assertThat(options.getReadBatchSize()).isEqualTo(512);
         assertThat(options.getReadColumns()).containsExactly("id", "content", "embedding");
@@ -136,18 +136,18 @@ class LanceConnectorITCase {
     }
 
     @Test
-    @DisplayName("Test RowDataConverter data conversion workflow")
+    @DisplayName("测试 RowDataConverter 数据转换流程")
     void testRowDataConverterWorkflow() {
         RowDataConverter converter = new RowDataConverter(rowType);
 
-        // Create test data
+        // 创建测试数据
         List<RowData> testData = new ArrayList<>();
         for (int i = 0; i < 10; i++) {
             GenericRowData row = new GenericRowData(3);
             row.setField(0, (long) i);
             row.setField(1, StringData.fromString("Content " + i));
 
-            // Create vector data
+            // 创建向量数据
             Float[] vector = new Float[128];
             for (int j = 0; j < 128; j++) {
                 vector[j] = (float) (i * 0.1 + j * 0.01);
@@ -157,14 +157,14 @@ class LanceConnectorITCase {
             testData.add(row);
         }
 
-        // Verify data creation succeeded
+        // 验证数据创建成功
         assertThat(testData).hasSize(10);
         assertThat(converter.getRowType()).isEqualTo(rowType);
         assertThat(converter.getFieldNames()).containsExactly("id", "content", "embedding");
     }
 
     @Test
-    @DisplayName("Test LanceSource builder pattern")
+    @DisplayName("测试 LanceSource 构建器模式")
     void testLanceSourceBuilder() {
         LanceSource source = LanceSource.builder()
                 .path(datasetPath)
@@ -181,7 +181,7 @@ class LanceConnectorITCase {
     }
 
     @Test
-    @DisplayName("Test LanceSink builder pattern")
+    @DisplayName("测试 LanceSink 构建器模式")
     void testLanceSinkBuilder() {
         LanceSink sink = LanceSink.builder()
                 .path(datasetPath)
@@ -199,7 +199,7 @@ class LanceConnectorITCase {
     }
 
     @Test
-    @DisplayName("Test LanceIndexBuilder builder pattern")
+    @DisplayName("测试 LanceIndexBuilder 构建器模式")
     void testLanceIndexBuilder() {
         LanceIndexBuilder builder = LanceIndexBuilder.builder()
                 .datasetPath(datasetPath)
@@ -217,7 +217,7 @@ class LanceConnectorITCase {
     }
 
     @Test
-    @DisplayName("Test LanceVectorSearch builder pattern")
+    @DisplayName("测试 LanceVectorSearch 构建器模式")
     void testLanceVectorSearchBuilder() {
         LanceVectorSearch search = LanceVectorSearch.builder()
                 .datasetPath(datasetPath)
@@ -232,116 +232,116 @@ class LanceConnectorITCase {
     }
 
     @Test
-    @DisplayName("Test Table API component creation")
+    @DisplayName("测试 Table API 组件创建")
     void testTableApiComponents() {
         LanceOptions options = LanceOptions.builder()
                 .path(datasetPath)
                 .build();
 
-        // Create DynamicTableSource
+        // 创建 DynamicTableSource
         LanceDynamicTableSource source = new LanceDynamicTableSource(options, dataType);
         assertThat(source.asSummaryString()).isEqualTo("Lance Table Source");
 
-        // Create DynamicTableSink
+        // 创建 DynamicTableSink
         LanceDynamicTableSink sink = new LanceDynamicTableSink(options, dataType);
         assertThat(sink.asSummaryString()).isEqualTo("Lance Table Sink");
 
-        // Create Factory
+        // 创建 Factory
         LanceDynamicTableFactory factory = new LanceDynamicTableFactory();
         assertThat(factory.factoryIdentifier()).isEqualTo("lance");
     }
 
     @Test
-    @DisplayName("Test Catalog lifecycle")
+    @DisplayName("测试 Catalog 生命周期")
     void testCatalogLifecycle() throws Exception {
         LanceCatalog catalog = new LanceCatalog("test_catalog", "default", warehousePath);
 
-        // Open Catalog
+        // 打开 Catalog
         catalog.open();
         assertThat(catalog.getDefaultDatabase()).isEqualTo("default");
         assertThat(catalog.getWarehouse()).isEqualTo(warehousePath);
 
-        // Verify default database exists
+        // 验证默认数据库存在
         assertThat(catalog.databaseExists("default")).isTrue();
 
-        // Create test database
+        // 创建测试数据库
         catalog.createDatabase("test_db", null, true);
         assertThat(catalog.databaseExists("test_db")).isTrue();
         assertThat(catalog.listDatabases()).contains("default", "test_db");
 
-        // List empty tables
+        // 列举空表
         assertThat(catalog.listTables("test_db")).isEmpty();
 
-        // Drop test database
+        // 删除测试数据库
         catalog.dropDatabase("test_db", true, true);
         assertThat(catalog.databaseExists("test_db")).isFalse();
 
-        // Close Catalog
+        // 关闭 Catalog
         catalog.close();
     }
 
     @Test
-    @DisplayName("Test type conversion bidirectional consistency")
+    @DisplayName("测试类型转换双向一致性")
     void testTypeConversionConsistency() {
         // Flink RowType -> Arrow Schema -> Flink RowType
         org.apache.arrow.vector.types.pojo.Schema arrowSchema = 
                 LanceTypeConverter.toArrowSchema(rowType);
         RowType convertedRowType = LanceTypeConverter.toFlinkRowType(arrowSchema);
 
-        // Verify field count
+        // 验证字段数量
         assertThat(convertedRowType.getFieldCount()).isEqualTo(rowType.getFieldCount());
 
-        // Verify field names
+        // 验证字段名称
         assertThat(convertedRowType.getFieldNames()).isEqualTo(rowType.getFieldNames());
     }
 
     @Test
-    @DisplayName("Test vector data conversion")
+    @DisplayName("测试向量数据转换")
     void testVectorDataConversion() {
-        // Create float array
+        // 创建 float 数组
         float[] originalVector = new float[] {0.1f, 0.2f, 0.3f, 0.4f, 0.5f};
 
-        // Convert to ArrayData
+        // 转换为 ArrayData
         org.apache.flink.table.data.ArrayData arrayData = 
                 RowDataConverter.toArrayData(originalVector);
 
-        // Convert back to float array
+        // 转换回 float 数组
         float[] convertedVector = RowDataConverter.toFloatArray(arrayData);
 
-        // Verify consistency
+        // 验证一致性
         assertThat(convertedVector).containsExactly(originalVector);
     }
 
     @Test
-    @DisplayName("Test double vector data conversion")
+    @DisplayName("测试 double 向量数据转换")
     void testDoubleVectorDataConversion() {
-        // Create double array
+        // 创建 double 数组
         double[] originalVector = new double[] {0.1, 0.2, 0.3, 0.4, 0.5};
 
-        // Convert to ArrayData
+        // 转换为 ArrayData
         org.apache.flink.table.data.ArrayData arrayData = 
                 RowDataConverter.toArrayData(originalVector);
 
-        // Convert back to double array
+        // 转换回 double 数组
         double[] convertedVector = RowDataConverter.toDoubleArray(arrayData);
 
-        // Verify consistency
+        // 验证一致性
         assertThat(convertedVector).containsExactly(originalVector);
     }
 
     @Test
-    @DisplayName("Test LanceSplit serialization compatibility")
+    @DisplayName("测试 LanceSplit 序列化兼容性")
     void testLanceSplitSerialization() {
         LanceSplit split1 = new LanceSplit(0, 1, datasetPath, 10000);
         LanceSplit split2 = new LanceSplit(0, 1, datasetPath, 10000);
         LanceSplit split3 = new LanceSplit(1, 2, datasetPath, 20000);
 
-        // Equality test
+        // 相等性测试
         assertThat(split1).isEqualTo(split2);
         assertThat(split1.hashCode()).isEqualTo(split2.hashCode());
         assertThat(split1).isNotEqualTo(split3);
 
-        // toString test
+        // toString 测试
         String str = split1.toString();
         assertThat(str).contains("LanceSplit");
         assertThat(str).contains("fragmentId=1");
@@ -349,26 +349,26 @@ class LanceConnectorITCase {
     }
 
     @Test
-    @DisplayName("Test search result similarity calculation")
+    @DisplayName("测试搜索结果相似度计算")
     void testSearchResultSimilarityCalculation() {
-        // Perfect match (distance=0)
+        // 完全匹配（距离=0）
         LanceVectorSearch.SearchResult perfectMatch = 
                 new LanceVectorSearch.SearchResult(null, 0.0);
         assertThat(perfectMatch.getSimilarity()).isEqualTo(1.0);
 
-        // Normal match (distance=1)
+        // 一般匹配（距离=1）
         LanceVectorSearch.SearchResult normalMatch = 
                 new LanceVectorSearch.SearchResult(null, 1.0);
         assertThat(normalMatch.getSimilarity()).isEqualTo(0.5);
 
-        // Far match (distance=9)
+        // 较远匹配（距离=9）
         LanceVectorSearch.SearchResult farMatch = 
                 new LanceVectorSearch.SearchResult(null, 9.0);
         assertThat(farMatch.getSimilarity()).isEqualTo(0.1);
     }
 
     @Test
-    @DisplayName("Test options toString and hashCode")
+    @DisplayName("测试配置 toString 和 hashCode")
     void testOptionsToStringAndHashCode() {
         LanceOptions options1 = LanceOptions.builder()
                 .path(datasetPath)
@@ -380,20 +380,20 @@ class LanceConnectorITCase {
                 .readBatchSize(512)
                 .build();
 
-        // hashCode equals
+        // hashCode 相等
         assertThat(options1.hashCode()).isEqualTo(options2.hashCode());
 
-        // equals
+        // equals 相等
         assertThat(options1).isEqualTo(options2);
 
-        // toString contains key info
+        // toString 包含关键信息
         String str = options1.toString();
         assertThat(str).contains("LanceOptions");
         assertThat(str).contains("readBatchSize=512");
     }
 
     @Test
-    @DisplayName("Test all enum types")
+    @DisplayName("测试所有枚举类型")
     void testAllEnumTypes() {
         // WriteMode
         assertThat(WriteMode.values()).hasSize(2);

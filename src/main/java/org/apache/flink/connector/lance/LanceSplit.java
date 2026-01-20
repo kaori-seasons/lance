@@ -24,16 +24,16 @@ import java.io.Serializable;
 import java.util.Objects;
 
 /**
- * Lance data split.
+ * Lance 数据分片。
  * 
- * <p>Represents a Fragment in Lance dataset, used for parallel data reading.
+ * <p>代表 Lance 数据集中的一个 Fragment，用于并行读取数据。
  */
 public class LanceSplit implements InputSplit, Serializable {
 
     private static final long serialVersionUID = 1L;
 
     /**
-     * Split number
+     * 分片编号
      */
     private final int splitNumber;
 
@@ -43,22 +43,22 @@ public class LanceSplit implements InputSplit, Serializable {
     private final int fragmentId;
 
     /**
-     * Dataset path
+     * 数据集路径
      */
     private final String datasetPath;
 
     /**
-     * Row count in Fragment (estimated)
+     * Fragment 中的行数（估计值）
      */
     private final long rowCount;
 
     /**
-     * Create LanceSplit
+     * 创建 LanceSplit
      *
-     * @param splitNumber Split number
+     * @param splitNumber 分片编号
      * @param fragmentId Fragment ID
-     * @param datasetPath Dataset path
-     * @param rowCount Row count
+     * @param datasetPath 数据集路径
+     * @param rowCount 行数
      */
     public LanceSplit(int splitNumber, int fragmentId, String datasetPath, long rowCount) {
         this.splitNumber = splitNumber;
@@ -73,21 +73,21 @@ public class LanceSplit implements InputSplit, Serializable {
     }
 
     /**
-     * Get Fragment ID
+     * 获取 Fragment ID
      */
     public int getFragmentId() {
         return fragmentId;
     }
 
     /**
-     * Get dataset path
+     * 获取数据集路径
      */
     public String getDatasetPath() {
         return datasetPath;
     }
 
     /**
-     * Get row count
+     * 获取行数
      */
     public long getRowCount() {
         return rowCount;

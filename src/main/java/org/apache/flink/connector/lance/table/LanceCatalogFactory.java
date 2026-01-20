@@ -30,11 +30,11 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Lance Catalog factory.
+ * Lance Catalog 工厂。
  * 
- * <p>Used to create LanceCatalog via SQL DDL.
+ * <p>用于通过 SQL DDL 创建 LanceCatalog。
  * 
- * <p>Usage example (local path):
+ * <p>使用示例（本地路径）：
  * <pre>{@code
  * CREATE CATALOG lance_catalog WITH (
  *     'type' = 'lance',
@@ -43,7 +43,7 @@ import java.util.Set;
  * );
  * }</pre>
  * 
- * <p>Usage example (S3 path):
+ * <p>使用示例（S3 路径）：
  * <pre>{@code
  * CREATE CATALOG lance_s3_catalog WITH (
  *     'type' = 'lance',
@@ -64,15 +64,15 @@ public class LanceCatalogFactory implements CatalogFactory {
             .key("warehouse")
             .stringType()
             .noDefaultValue()
-            .withDescription("Lance data warehouse path, supports local path or S3 path (e.g., s3://bucket/path)");
+            .withDescription("Lance 数据仓库路径，支持本地路径或 S3 路径（如 s3://bucket/path）");
 
     public static final ConfigOption<String> DEFAULT_DATABASE = ConfigOptions
             .key("default-database")
             .stringType()
             .defaultValue(LanceCatalog.DEFAULT_DATABASE)
-            .withDescription("Default database name");
+            .withDescription("默认数据库名称");
 
-    // ==================== S3 Configuration Options ====================
+    // ==================== S3 配置选项 ====================
     
     public static final ConfigOption<String> S3_ACCESS_KEY = ConfigOptions
             .key("s3-access-key")
@@ -90,25 +90,25 @@ public class LanceCatalogFactory implements CatalogFactory {
             .key("s3-region")
             .stringType()
             .noDefaultValue()
-            .withDescription("S3 Region (e.g., us-east-1)");
+            .withDescription("S3 Region（如 us-east-1）");
 
     public static final ConfigOption<String> S3_ENDPOINT = ConfigOptions
             .key("s3-endpoint")
             .stringType()
             .noDefaultValue()
-            .withDescription("S3 Endpoint URL (for S3-compatible object storage like MinIO)");
+            .withDescription("S3 Endpoint URL（用于兼容 S3 协议的对象存储，如 MinIO）");
 
     public static final ConfigOption<Boolean> S3_VIRTUAL_HOSTED_STYLE = ConfigOptions
             .key("s3-virtual-hosted-style")
             .booleanType()
             .defaultValue(true)
-            .withDescription("Whether to use virtual hosted style URL (default true)");
+            .withDescription("是否使用虚拟主机风格的 URL（默认 true）");
 
     public static final ConfigOption<Boolean> S3_ALLOW_HTTP = ConfigOptions
             .key("s3-allow-http")
             .booleanType()
             .defaultValue(false)
-            .withDescription("Whether to allow HTTP connections (default false, HTTPS only)");
+            .withDescription("是否允许 HTTP 连接（默认 false，仅允许 HTTPS）");
 
     @Override
     public String factoryIdentifier() {
@@ -126,7 +126,7 @@ public class LanceCatalogFactory implements CatalogFactory {
     public Set<ConfigOption<?>> optionalOptions() {
         Set<ConfigOption<?>> options = new HashSet<>();
         options.add(DEFAULT_DATABASE);
-        // S3 related options
+        // S3 相关选项
         options.add(S3_ACCESS_KEY);
         options.add(S3_SECRET_KEY);
         options.add(S3_REGION);
@@ -145,10 +145,10 @@ public class LanceCatalogFactory implements CatalogFactory {
         String warehouse = helper.getOptions().get(WAREHOUSE);
         String defaultDatabase = helper.getOptions().get(DEFAULT_DATABASE);
 
-        // Collect storage configuration
+        // 收集存储配置
         Map<String, String> storageOptions = new HashMap<>();
         
-        // S3 configuration
+        // S3 配置
         String accessKey = helper.getOptions().get(S3_ACCESS_KEY);
         String secretKey = helper.getOptions().get(S3_SECRET_KEY);
         String region = helper.getOptions().get(S3_REGION);

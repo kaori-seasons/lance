@@ -38,7 +38,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * LanceSink unit tests.
+ * LanceSink 单元测试。
  */
 class LanceSinkTest {
 
@@ -52,7 +52,7 @@ class LanceSinkTest {
     void setUp() {
         datasetPath = tempDir.resolve("test_sink_dataset").toString();
         
-        // Create test RowType
+        // 创建测试 RowType
         List<RowType.RowField> fields = new ArrayList<>();
         fields.add(new RowType.RowField("id", new BigIntType()));
         fields.add(new RowType.RowField("content", new VarCharType()));
@@ -61,7 +61,7 @@ class LanceSinkTest {
     }
 
     @Test
-    @DisplayName("Test LanceSink configuration build")
+    @DisplayName("测试 LanceSink 配置构建")
     void testSinkConfiguration() {
         LanceOptions options = LanceOptions.builder()
                 .path(datasetPath)
@@ -80,7 +80,7 @@ class LanceSinkTest {
     }
 
     @Test
-    @DisplayName("Test LanceSink Builder pattern")
+    @DisplayName("测试 LanceSink Builder 模式")
     void testSinkBuilder() {
         LanceSink sink = LanceSink.builder()
                 .path(datasetPath)
@@ -97,17 +97,17 @@ class LanceSinkTest {
     }
 
     @Test
-    @DisplayName("Test LanceSink Builder throws exception when missing path")
+    @DisplayName("测试 LanceSink Builder 缺少路径时抛出异常")
     void testSinkBuilderMissingPath() {
         assertThatThrownBy(() -> LanceSink.builder()
                 .rowType(rowType)
                 .build())
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Dataset path cannot be empty");
+                .hasMessageContaining("路径不能为空");
     }
 
     @Test
-    @DisplayName("Test LanceSink Builder throws exception when missing RowType")
+    @DisplayName("测试 LanceSink Builder 缺少 RowType 时抛出异常")
     void testSinkBuilderMissingRowType() {
         assertThatThrownBy(() -> LanceSink.builder()
                 .path(datasetPath)
@@ -117,20 +117,20 @@ class LanceSinkTest {
     }
 
     @Test
-    @DisplayName("Test default Sink configuration values")
+    @DisplayName("测试默认 Sink 配置值")
     void testDefaultSinkConfiguration() {
         LanceOptions options = LanceOptions.builder()
                 .path(datasetPath)
                 .build();
 
-        // Verify default values
+        // 验证默认值
         assertThat(options.getWriteBatchSize()).isEqualTo(1024);
         assertThat(options.getWriteMode()).isEqualTo(LanceOptions.WriteMode.APPEND);
         assertThat(options.getWriteMaxRowsPerFile()).isEqualTo(1000000);
     }
 
     @Test
-    @DisplayName("Test write mode enum")
+    @DisplayName("测试写入模式枚举")
     void testWriteMode() {
         assertThat(LanceOptions.WriteMode.fromValue("append"))
                 .isEqualTo(LanceOptions.WriteMode.APPEND);
@@ -143,15 +143,15 @@ class LanceSinkTest {
     }
 
     @Test
-    @DisplayName("Test invalid write mode")
+    @DisplayName("测试无效的写入模式")
     void testInvalidWriteMode() {
         assertThatThrownBy(() -> LanceOptions.WriteMode.fromValue("invalid"))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Unsupported write mode");
+                .hasMessageContaining("不支持的写入模式");
     }
 
     @Test
-    @DisplayName("Test configuration validation - invalid write batch size")
+    @DisplayName("测试配置校验 - 无效的写入批次大小")
     void testInvalidWriteBatchSize() {
         assertThatThrownBy(() -> LanceOptions.builder()
                 .path(datasetPath)
@@ -162,7 +162,7 @@ class LanceSinkTest {
     }
 
     @Test
-    @DisplayName("Test configuration validation - invalid max rows per file")
+    @DisplayName("测试配置校验 - 无效的每文件最大行数")
     void testInvalidMaxRowsPerFile() {
         assertThatThrownBy(() -> LanceOptions.builder()
                 .path(datasetPath)
@@ -173,7 +173,7 @@ class LanceSinkTest {
     }
 
     @Test
-    @DisplayName("Test vector type write configuration")
+    @DisplayName("测试向量类型写入配置")
     void testVectorWriteConfiguration() {
         List<RowType.RowField> fields = new ArrayList<>();
         fields.add(new RowType.RowField("id", new BigIntType()));
@@ -192,9 +192,9 @@ class LanceSinkTest {
     }
 
     @Test
-    @DisplayName("Test APPEND and OVERWRITE mode configuration")
+    @DisplayName("测试 APPEND 和 OVERWRITE 模式配置")
     void testWriteModeConfiguration() {
-        // APPEND mode
+        // APPEND 模式
         LanceOptions appendOptions = LanceOptions.builder()
                 .path(datasetPath)
                 .writeMode(LanceOptions.WriteMode.APPEND)
@@ -202,7 +202,7 @@ class LanceSinkTest {
         assertThat(appendOptions.getWriteMode()).isEqualTo(LanceOptions.WriteMode.APPEND);
         assertThat(appendOptions.getWriteMode().getValue()).isEqualTo("append");
 
-        // OVERWRITE mode
+        // OVERWRITE 模式
         LanceOptions overwriteOptions = LanceOptions.builder()
                 .path(datasetPath)
                 .writeMode(LanceOptions.WriteMode.OVERWRITE)

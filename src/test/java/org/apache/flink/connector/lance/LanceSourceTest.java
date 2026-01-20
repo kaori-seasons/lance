@@ -39,7 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * LanceSource unit tests.
+ * LanceSource 单元测试。
  */
 class LanceSourceTest {
 
@@ -53,7 +53,7 @@ class LanceSourceTest {
     void setUp() {
         datasetPath = tempDir.resolve("test_dataset").toString();
         
-        // Create test RowType
+        // 创建测试 RowType
         List<RowType.RowField> fields = new ArrayList<>();
         fields.add(new RowType.RowField("id", new BigIntType()));
         fields.add(new RowType.RowField("content", new VarCharType()));
@@ -62,7 +62,7 @@ class LanceSourceTest {
     }
 
     @Test
-    @DisplayName("Test LanceSource configuration build")
+    @DisplayName("测试 LanceSource 配置构建")
     void testSourceConfiguration() {
         LanceOptions options = LanceOptions.builder()
                 .path(datasetPath)
@@ -81,7 +81,7 @@ class LanceSourceTest {
     }
 
     @Test
-    @DisplayName("Test LanceSource Builder pattern")
+    @DisplayName("测试 LanceSource Builder 模式")
     void testSourceBuilder() {
         LanceSource source = LanceSource.builder()
                 .path(datasetPath)
@@ -97,17 +97,17 @@ class LanceSourceTest {
     }
 
     @Test
-    @DisplayName("Test LanceSource Builder throws exception when missing path")
+    @DisplayName("测试 LanceSource Builder 缺少路径时抛出异常")
     void testSourceBuilderMissingPath() {
         assertThatThrownBy(() -> LanceSource.builder()
                 .rowType(rowType)
                 .build())
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Dataset path cannot be empty");
+                .hasMessageContaining("路径不能为空");
     }
 
     @Test
-    @DisplayName("Test LanceSplit creation")
+    @DisplayName("测试 LanceSplit 创建")
     void testLanceSplit() {
         LanceSplit split = new LanceSplit(0, 1, datasetPath, 1000);
 
@@ -118,7 +118,7 @@ class LanceSourceTest {
     }
 
     @Test
-    @DisplayName("Test LanceSplit equality")
+    @DisplayName("测试 LanceSplit 相等性")
     void testLanceSplitEquality() {
         LanceSplit split1 = new LanceSplit(0, 1, datasetPath, 1000);
         LanceSplit split2 = new LanceSplit(0, 1, datasetPath, 1000);
@@ -130,7 +130,7 @@ class LanceSourceTest {
     }
 
     @Test
-    @DisplayName("Test LanceInputFormat configuration")
+    @DisplayName("测试 LanceInputFormat 配置")
     void testInputFormatConfiguration() {
         LanceOptions options = LanceOptions.builder()
                 .path(datasetPath)
@@ -145,20 +145,20 @@ class LanceSourceTest {
     }
 
     @Test
-    @DisplayName("Test default configuration values")
+    @DisplayName("测试默认配置值")
     void testDefaultConfiguration() {
         LanceOptions options = LanceOptions.builder()
                 .path(datasetPath)
                 .build();
 
-        // Verify default values
+        // 验证默认值
         assertThat(options.getReadBatchSize()).isEqualTo(1024);
         assertThat(options.getReadColumns()).isEmpty();
         assertThat(options.getReadFilter()).isNull();
     }
 
     @Test
-    @DisplayName("Test configuration validation - invalid batch size")
+    @DisplayName("测试配置校验 - 无效的批次大小")
     void testInvalidBatchSize() {
         assertThatThrownBy(() -> LanceOptions.builder()
                 .path(datasetPath)
@@ -169,7 +169,7 @@ class LanceSourceTest {
     }
 
     @Test
-    @DisplayName("Test vector type RowType")
+    @DisplayName("测试向量类型的 RowType")
     void testVectorRowType() {
         List<RowType.RowField> fields = new ArrayList<>();
         fields.add(new RowType.RowField("id", new BigIntType()));

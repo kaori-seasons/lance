@@ -21,7 +21,6 @@ package org.apache.flink.connector.lance.table;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.connector.lance.LanceInputFormat;
 import org.apache.flink.connector.lance.LanceSource;
-import org.apache.flink.connector.lance.aggregate.AggregateInfo;
 import org.apache.flink.connector.lance.config.LanceOptions;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -31,12 +30,9 @@ import org.apache.flink.table.connector.source.DataStreamScanProvider;
 import org.apache.flink.table.connector.source.DynamicTableSource;
 import org.apache.flink.table.connector.source.InputFormatProvider;
 import org.apache.flink.table.connector.source.ScanTableSource;
-import org.apache.flink.table.connector.source.abilities.SupportsAggregatePushDown;
 import org.apache.flink.table.connector.source.abilities.SupportsFilterPushDown;
-import org.apache.flink.table.connector.source.abilities.SupportsLimitPushDown;
 import org.apache.flink.table.connector.source.abilities.SupportsProjectionPushDown;
 import org.apache.flink.table.data.RowData;
-import org.apache.flink.table.expressions.AggregateExpression;
 import org.apache.flink.table.expressions.CallExpression;
 import org.apache.flink.table.expressions.FieldReferenceExpression;
 import org.apache.flink.table.expressions.ResolvedExpression;
@@ -44,7 +40,6 @@ import org.apache.flink.table.expressions.ValueLiteralExpression;
 import org.apache.flink.table.functions.BuiltInFunctionDefinitions;
 import org.apache.flink.table.functions.FunctionDefinition;
 import org.apache.flink.table.types.DataType;
-import org.apache.flink.table.types.logical.LogicalType;
 import org.apache.flink.table.types.logical.RowType;
 import org.apache.flink.types.RowKind;
 
@@ -54,30 +49,23 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * Lance dynamic table source.
+ * Lance 动态表数据源。
  * 
- * <p>Implements ScanTableSource interface, supports column pruning and filter push-down.
+ * <p>实现 ScanTableSource 接口，支持列裁剪和过滤下推。
  */
 public class LanceDynamicTableSource implements ScanTableSource, 
-        SupportsProjectionPushDown, SupportsFilterPushDown, SupportsLimitPushDown,
-        SupportsAggregatePushDown {
+        SupportsProjectionPushDown, SupportsFilterPushDown {
 
     private final LanceOptions options;
     private final DataType physicalDataType;
     private int[] projectedFields;
     private List<String> filters;
-    private Long limit;  // Limit push-down
-    private AggregateInfo aggregateInfo;  // Aggregate push-down
-    private boolean aggregatePushDownAccepted;  // Whether aggregate push-down is accepted
 
     public LanceDynamicTableSource(LanceOptions options, DataType physicalDataType) {
         this.options = options;
         this.physicalDataType = physicalDataType;
         this.projectedFields = null;
         this.filters = new ArrayList<>();
-        this.limit = null;
-        this.aggregateInfo = null;
-        this.aggregatePushDownAccepted = false;
     }
 
     private LanceDynamicTableSource(LanceDynamicTableSource source) {
@@ -85,9 +73,6 @@ public class LanceDynamicTableSource implements ScanTableSource,
         this.physicalDataType = source.physicalDataType;
         this.projectedFields = source.projectedFields;
         this.filters = new ArrayList<>(source.filters);
-        this.limit = source.limit;
-        this.aggregateInfo = source.aggregateInfo;
-        this.aggregatePushDownAccepted = source.aggregatePushDownAccepted;
     }
 
     @Override
@@ -99,7 +84,7 @@ public class LanceDynamicTableSource implements ScanTableSource,
     public ScanRuntimeProvider getScanRuntimeProvider(ScanContext runtimeProviderContext) {
         RowType rowType = (RowType) physicalDataType.getLogicalType();
         
-        // If column pruning applied, build new RowType
+        // 如果有列裁剪，构建新的 RowType
         RowType projectedRowType = rowType;
         if (projectedFields != null) {
             List<RowType.RowField> projectedFieldList = new ArrayList<>();
@@ -109,18 +94,13 @@ public class LanceDynamicTableSource implements ScanTableSource,
             projectedRowType = new RowType(projectedFieldList);
         }
 
-        // Build LanceOptions (apply column pruning and filter conditions)
+        // 构建 LanceOptions（应用列裁剪和过滤条件）
         LanceOptions.Builder optionsBuilder = LanceOptions.builder()
                 .path(options.getPath())
                 .readBatchSize(options.getReadBatchSize())
                 .readFilter(buildFilterExpression());
 
-        // Set Limit (if any)
-        if (limit != null) {
-            optionsBuilder.readLimit(limit);
-        }
-
-        // Set columns to read
+        // 设置要读取的列
         if (projectedFields != null) {
             List<String> columnNames = Arrays.stream(projectedFields)
                     .mapToObj(i -> rowType.getFieldNames().get(i))
@@ -131,7 +111,7 @@ public class LanceDynamicTableSource implements ScanTableSource,
         LanceOptions finalOptions = optionsBuilder.build();
         final RowType finalRowType = projectedRowType;
 
-        // Use DataStreamScanProvider
+        // 使用 DataStreamScanProvider
         return new DataStreamScanProvider() {
             @Override
             public DataStream<RowData> produceDataStream(StreamExecutionEnvironment execEnv) {
@@ -141,7 +121,7 @@ public class LanceDynamicTableSource implements ScanTableSource,
 
             @Override
             public boolean isBounded() {
-                return true; // Lance dataset is bounded
+                return true; // Lance 数据集是有界的
             }
         };
     }
@@ -165,7 +145,7 @@ public class LanceDynamicTableSource implements ScanTableSource,
 
     @Override
     public void applyProjection(int[][] projectedFields) {
-        // Only support top-level field projection
+        // 仅支持顶层字段投影
         this.projectedFields = Arrays.stream(projectedFields)
                 .mapToInt(arr -> arr[0])
                 .toArray();
@@ -175,7 +155,7 @@ public class LanceDynamicTableSource implements ScanTableSource,
 
     @Override
     public Result applyFilters(List<ResolvedExpression> filters) {
-        // Convert Flink expressions to Lance filter conditions
+        // 将 Flink 表达式转换为 Lance 过滤条件
         List<ResolvedExpression> acceptedFilters = new ArrayList<>();
         List<ResolvedExpression> remainingFilters = new ArrayList<>();
 
@@ -193,8 +173,8 @@ public class LanceDynamicTableSource implements ScanTableSource,
     }
 
     /**
-     * Convert Flink expression to Lance filter condition.
-     * Lance supports standard SQL filter syntax, e.g., column = 'value', column > 10
+     * 将 Flink 表达式转换为 Lance 过滤条件
+     * Lance 支持标准 SQL 过滤语法，如：column = 'value', column > 10
      */
     private String convertToLanceFilter(ResolvedExpression expression) {
         try {
@@ -202,22 +182,22 @@ public class LanceDynamicTableSource implements ScanTableSource,
                 CallExpression callExpr = (CallExpression) expression;
                 return convertCallExpression(callExpr);
             }
-            // Other expression types not supported for push-down
+            // 其他类型的表达式暂不支持下推
             return null;
         } catch (Exception e) {
-            // Return null for unconvertible expressions, handled by Flink at upper layer
+            // 无法转换的表达式返回 null，由 Flink 在上层处理
             return null;
         }
     }
 
     /**
-     * Convert CallExpression to Lance filter string
+     * 转换 CallExpression 为 Lance 过滤字符串
      */
     private String convertCallExpression(CallExpression callExpr) {
         FunctionDefinition funcDef = callExpr.getFunctionDefinition();
         List<ResolvedExpression> args = callExpr.getResolvedChildren();
 
-        // Comparison operators
+        // 比较运算符
         if (funcDef == BuiltInFunctionDefinitions.EQUALS) {
             return buildComparisonFilter(args, "=");
         } else if (funcDef == BuiltInFunctionDefinitions.NOT_EQUALS) {
@@ -231,7 +211,7 @@ public class LanceDynamicTableSource implements ScanTableSource,
         } else if (funcDef == BuiltInFunctionDefinitions.LESS_THAN_OR_EQUAL) {
             return buildComparisonFilter(args, "<=");
         }
-        // Logical operators
+        // 逻辑运算符
         else if (funcDef == BuiltInFunctionDefinitions.AND) {
             return buildLogicalFilter(args, "AND");
         } else if (funcDef == BuiltInFunctionDefinitions.OR) {
@@ -260,15 +240,15 @@ public class LanceDynamicTableSource implements ScanTableSource,
         else if (funcDef == BuiltInFunctionDefinitions.LIKE) {
             return buildComparisonFilter(args, "LIKE");
         }
-        // IN (not supported yet, requires more complex handling)
-        // BETWEEN (not supported yet)
+        // IN (暂不支持，需要更复杂的处理)
+        // BETWEEN (暂不支持)
 
-        // Unsupported functions, return null
+        // 不支持的函数，返回 null
         return null;
     }
 
     /**
-     * Build comparison filter expression
+     * 构建比较过滤表达式
      */
     private String buildComparisonFilter(List<ResolvedExpression> args, String operator) {
         if (args.size() != 2) {
@@ -278,7 +258,7 @@ public class LanceDynamicTableSource implements ScanTableSource,
         ResolvedExpression left = args.get(0);
         ResolvedExpression right = args.get(1);
 
-        // Extract field name and value
+        // 提取字段名和值
         String fieldName = null;
         String value = null;
 
@@ -288,7 +268,7 @@ public class LanceDynamicTableSource implements ScanTableSource,
         } else if (right instanceof FieldReferenceExpression) {
             fieldName = ((FieldReferenceExpression) right).getName();
             value = extractLiteralValue(left);
-            // For asymmetric operators, need to swap operator
+            // 对于非对称运算符，需要交换操作符
             if (">".equals(operator)) operator = "<";
             else if ("<".equals(operator)) operator = ">";
             else if (">=".equals(operator)) operator = "<=";
@@ -303,14 +283,14 @@ public class LanceDynamicTableSource implements ScanTableSource,
     }
 
     /**
-     * Build logical filter expression
+     * 构建逻辑过滤表达式
      */
     private String buildLogicalFilter(List<ResolvedExpression> args, String operator) {
         List<String> convertedArgs = new ArrayList<>();
         for (ResolvedExpression arg : args) {
             String converted = convertToLanceFilter(arg);
             if (converted == null) {
-                return null; // If any sub-expression cannot be converted, don't push down entire expression
+                return null; // 如果任何一个子表达式无法转换，则整个表达式都不下推
             }
             convertedArgs.add("(" + converted + ")");
         }
@@ -318,7 +298,7 @@ public class LanceDynamicTableSource implements ScanTableSource,
     }
 
     /**
-     * Extract literal value from ValueLiteralExpression
+     * 从 ValueLiteralExpression 提取字面值
      */
     private String extractLiteralValue(ResolvedExpression expr) {
         if (expr instanceof ValueLiteralExpression) {
@@ -328,7 +308,7 @@ public class LanceDynamicTableSource implements ScanTableSource,
             if (value == null) {
                 return "NULL";
             } else if (value instanceof String) {
-                // Strings need single quotes and escape internal single quotes
+                // 字符串需要用单引号包裹，并转义内部的单引号
                 String strValue = (String) value;
                 strValue = strValue.replace("'", "''");
                 return "'" + strValue + "'";
@@ -337,7 +317,7 @@ public class LanceDynamicTableSource implements ScanTableSource,
             } else if (value instanceof Boolean) {
                 return value.toString().toUpperCase();
             } else {
-                // Other types try to convert to string
+                // 其他类型尝试转为字符串
                 return "'" + value.toString().replace("'", "''") + "'";
             }
         }
@@ -345,7 +325,7 @@ public class LanceDynamicTableSource implements ScanTableSource,
     }
 
     /**
-     * Build filter expression
+     * 构建过滤表达式
      */
     private String buildFilterExpression() {
         if (filters.isEmpty()) {
@@ -363,165 +343,16 @@ public class LanceDynamicTableSource implements ScanTableSource,
     }
 
     /**
-     * Get configuration options
+     * 获取配置选项
      */
     public LanceOptions getOptions() {
         return options;
     }
 
     /**
-     * Get physical data type
+     * 获取物理数据类型
      */
     public DataType getPhysicalDataType() {
         return physicalDataType;
-    }
-
-    // ==================== SupportsLimitPushDown ====================
-
-    @Override
-    public void applyLimit(long limit) {
-        this.limit = limit;
-    }
-
-    /**
-     * Get Limit value
-     */
-    public Long getLimit() {
-        return limit;
-    }
-
-    // ==================== SupportsAggregatePushDown ====================
-
-    @Override
-    public boolean applyAggregates(
-            List<int[]> groupingSets,
-            List<AggregateExpression> aggregateExpressions,
-            DataType producedDataType) {
-        
-        // Currently only support simple single grouping set
-        if (groupingSets.size() != 1) {
-            return false;
-        }
-
-        int[] groupingSet = groupingSets.get(0);
-        RowType rowType = (RowType) physicalDataType.getLogicalType();
-        List<String> fieldNames = rowType.getFieldNames();
-
-        try {
-            AggregateInfo.Builder builder = AggregateInfo.builder();
-
-            // Handle grouping columns
-            List<String> groupByColumns = new ArrayList<>();
-            for (int fieldIndex : groupingSet) {
-                if (fieldIndex >= 0 && fieldIndex < fieldNames.size()) {
-                    groupByColumns.add(fieldNames.get(fieldIndex));
-                }
-            }
-            builder.groupBy(groupByColumns);
-            builder.groupByFieldIndices(groupingSet);
-
-            // Handle aggregate expressions
-            int aggIndex = 0;
-            for (AggregateExpression aggExpr : aggregateExpressions) {
-                AggregateInfo.AggregateCall aggCall = convertAggregateExpression(aggExpr, fieldNames, aggIndex++);
-                if (aggCall == null) {
-                    // Unsupported aggregate function, reject push-down
-                    return false;
-                }
-                builder.addAggregateCall(aggCall);
-            }
-
-            this.aggregateInfo = builder.build();
-            this.aggregatePushDownAccepted = true;
-            return true;
-
-        } catch (Exception e) {
-            // Conversion failed, reject push-down
-            return false;
-        }
-    }
-
-    /**
-     * Convert Flink aggregate expression to internal aggregate call
-     */
-    private AggregateInfo.AggregateCall convertAggregateExpression(
-            AggregateExpression aggExpr, 
-            List<String> fieldNames,
-            int aggIndex) {
-        
-        FunctionDefinition funcDef = aggExpr.getFunctionDefinition();
-        List<FieldReferenceExpression> args = aggExpr.getArgs();
-        String alias = "agg_" + aggIndex;
-
-        // COUNT(*)
-        if (funcDef == BuiltInFunctionDefinitions.COUNT) {
-            if (args.isEmpty()) {
-                // COUNT(*)
-                return new AggregateInfo.AggregateCall(
-                        AggregateInfo.AggregateFunction.COUNT, null, alias);
-            } else {
-                // COUNT(column)
-                String columnName = args.get(0).getName();
-                return new AggregateInfo.AggregateCall(
-                        AggregateInfo.AggregateFunction.COUNT, columnName, alias);
-            }
-        }
-
-        // SUM
-        if (funcDef == BuiltInFunctionDefinitions.SUM || funcDef == BuiltInFunctionDefinitions.SUM0) {
-            if (args.isEmpty()) {
-                return null;
-            }
-            String columnName = args.get(0).getName();
-            return new AggregateInfo.AggregateCall(
-                    AggregateInfo.AggregateFunction.SUM, columnName, alias);
-        }
-
-        // AVG
-        if (funcDef == BuiltInFunctionDefinitions.AVG) {
-            if (args.isEmpty()) {
-                return null;
-            }
-            String columnName = args.get(0).getName();
-            return new AggregateInfo.AggregateCall(
-                    AggregateInfo.AggregateFunction.AVG, columnName, alias);
-        }
-
-        // MIN
-        if (funcDef == BuiltInFunctionDefinitions.MIN) {
-            if (args.isEmpty()) {
-                return null;
-            }
-            String columnName = args.get(0).getName();
-            return new AggregateInfo.AggregateCall(
-                    AggregateInfo.AggregateFunction.MIN, columnName, alias);
-        }
-
-        // MAX
-        if (funcDef == BuiltInFunctionDefinitions.MAX) {
-            if (args.isEmpty()) {
-                return null;
-            }
-            String columnName = args.get(0).getName();
-            return new AggregateInfo.AggregateCall(
-                    AggregateInfo.AggregateFunction.MAX, columnName, alias);
-        }
-
-        // Unsupported aggregate function
-        return null;
-    }
-
-    /**
-     * Get aggregate info
-     */
-    public AggregateInfo getAggregateInfo() {
-        return aggregateInfo;
-    }
-
-    /**
-     * Whether aggregate push-down is accepted
-     */
-    public boolean isAggregatePushDownAccepted() {
-        return aggregatePushDownAccepted;
     }
 }

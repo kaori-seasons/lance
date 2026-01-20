@@ -48,11 +48,11 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Lance vector search implementation.
+ * Lance 向量检索实现。
  * 
- * <p>Supports KNN search with L2, Cosine, and Dot distance metrics.
+ * <p>支持 KNN 检索，支持 L2、Cosine、Dot 三种距离度量方式。
  * 
- * <p>Usage example:
+ * <p>使用示例：
  * <pre>{@code
  * LanceVectorSearch search = LanceVectorSearch.builder()
  *     .datasetPath("/path/to/dataset")
@@ -91,59 +91,59 @@ public class LanceVectorSearch implements Closeable, Serializable {
     }
 
     /**
-     * Open dataset connection
+     * 打开数据集连接
      */
     public void open() throws IOException {
-        LOG.info("Opening vector search, dataset: {}", datasetPath);
+        LOG.info("打开向量检索，数据集: {}", datasetPath);
         
         this.allocator = new RootAllocator(Long.MAX_VALUE);
         
         try {
             this.dataset = Dataset.open(datasetPath, allocator);
             
-            // Get Schema and create converter
+            // 获取 Schema 并创建转换器
             Schema arrowSchema = dataset.getSchema();
             this.rowType = LanceTypeConverter.toFlinkRowType(arrowSchema);
             this.converter = new RowDataConverter(rowType);
             
         } catch (Exception e) {
-            throw new IOException("Cannot open dataset: " + datasetPath, e);
+            throw new IOException("无法打开数据集: " + datasetPath, e);
         }
     }
 
     /**
-     * Execute vector search
+     * 执行向量检索
      *
-     * @param queryVector Query vector
-     * @param k Number of nearest neighbors to return
-     * @return List of search results
+     * @param queryVector 查询向量
+     * @param k 返回的最近邻数量
+     * @return 检索结果列表
      */
     public List<SearchResult> search(float[] queryVector, int k) throws IOException {
         return search(queryVector, k, null);
     }
 
     /**
-     * Execute vector search (with filter condition)
+     * 执行向量检索（带过滤条件）
      *
-     * @param queryVector Query vector
-     * @param k Number of nearest neighbors to return
-     * @param filter Filter condition (SQL WHERE syntax)
-     * @return List of search results
+     * @param queryVector 查询向量
+     * @param k 返回的最近邻数量
+     * @param filter 过滤条件（SQL WHERE 语法）
+     * @return 检索结果列表
      */
     public List<SearchResult> search(float[] queryVector, int k, String filter) throws IOException {
         if (dataset == null) {
             open();
         }
         
-        LOG.debug("Executing vector search, k={}, vector dimension={}", k, queryVector.length);
+        LOG.debug("执行向量检索，k={}, 向量维度={}", k, queryVector.length);
         
-        // Validate query vector
+        // 验证查询向量
         validateQueryVector(queryVector);
         
         List<SearchResult> results = new ArrayList<>();
         
         try {
-            // Build vector query
+            // 构建向量查询
             Query.Builder queryBuilder = new Query.Builder()
                     .setColumn(columnName)
                     .setKey(queryVector)
@@ -162,7 +162,7 @@ public class LanceVectorSearch implements Closeable, Serializable {
             
             Query query = queryBuilder.build();
             
-            // Build scan options
+            // 构建扫描选项
             ScanOptions.Builder scanOptionsBuilder = new ScanOptions.Builder()
                     .nearest(query)
                     .withRowId(true);
@@ -173,21 +173,21 @@ public class LanceVectorSearch implements Closeable, Serializable {
             
             ScanOptions scanOptions = scanOptionsBuilder.build();
             
-            // Execute search
+            // 执行检索
             try (LanceScanner scanner = dataset.newScan(scanOptions)) {
                 try (ArrowReader reader = scanner.scanBatches()) {
                     while (reader.loadNextBatch()) {
                         VectorSchemaRoot root = reader.getVectorSchemaRoot();
                         
-                        // Convert to RowData
+                        // 转换为 RowData
                         List<RowData> rows = converter.toRowDataList(root);
                         
-                        // Try to get distance score (if _distance column exists)
+                        // 尝试获取距离分数（如果存在 _distance 列）
                         Float8Vector distanceVector = null;
                         try {
                             distanceVector = (Float8Vector) root.getVector("_distance");
                         } catch (Exception e) {
-                            // _distance column may not exist
+                            // _distance 列可能不存在
                         }
                         
                         for (int i = 0; i < rows.size(); i++) {
@@ -201,27 +201,27 @@ public class LanceVectorSearch implements Closeable, Serializable {
                 }
             }
             
-            LOG.debug("Search completed, returned {} results", results.size());
+            LOG.debug("检索完成，返回 {} 个结果", results.size());
             return results;
             
         } catch (Exception e) {
-            throw new IOException("Vector search failed", e);
+            throw new IOException("向量检索失败", e);
         }
     }
 
     /**
-     * Execute vector search (return RowData list)
+     * 执行向量检索（返回 RowData 列表）
      *
-     * @param queryVector Query vector
-     * @param k Number of nearest neighbors to return
-     * @return RowData list
+     * @param queryVector 查询向量
+     * @param k 返回的最近邻数量
+     * @return RowData 列表
      */
     public List<RowData> searchRowData(float[] queryVector, int k) throws IOException {
         List<SearchResult> results = search(queryVector, k);
         List<RowData> rowDataList = new ArrayList<>(results.size());
         
         for (SearchResult result : results) {
-            // Append distance score to RowData
+            // 将距离分数附加到 RowData 中
             GenericRowData rowWithDistance = new GenericRowData(rowType.getFieldCount() + 1);
             RowData originalRow = result.getRowData();
             
@@ -237,14 +237,14 @@ public class LanceVectorSearch implements Closeable, Serializable {
     }
 
     /**
-     * Get field value from RowData
+     * 获取 RowData 中的字段值
      */
     private Object getFieldValue(RowData rowData, int index) {
         if (rowData.isNullAt(index)) {
             return null;
         }
         
-        // Simplified handling, should get based on field type in practice
+        // 这里简化处理，实际应根据字段类型获取
         if (rowData instanceof GenericRowData) {
             return ((GenericRowData) rowData).getField(index);
         }
@@ -253,23 +253,23 @@ public class LanceVectorSearch implements Closeable, Serializable {
     }
 
     /**
-     * Validate query vector
+     * 验证查询向量
      */
     private void validateQueryVector(float[] queryVector) throws IOException {
         if (queryVector == null || queryVector.length == 0) {
-            throw new IllegalArgumentException("Query vector cannot be empty");
+            throw new IllegalArgumentException("查询向量不能为空");
         }
         
-        // Check for NaN or Infinity values
+        // 检查是否有 NaN 或 Infinity
         for (float value : queryVector) {
             if (Float.isNaN(value) || Float.isInfinite(value)) {
-                throw new IllegalArgumentException("Query vector contains invalid values (NaN or Infinity)");
+                throw new IllegalArgumentException("查询向量包含无效值 (NaN 或 Infinity)");
             }
         }
     }
 
     /**
-     * Convert distance metric type
+     * 转换距离度量类型
      */
     private DistanceType toDistanceType(MetricType metricType) {
         switch (metricType) {
@@ -290,7 +290,7 @@ public class LanceVectorSearch implements Closeable, Serializable {
             try {
                 dataset.close();
             } catch (Exception e) {
-                LOG.warn("Failed to close dataset", e);
+                LOG.warn("关闭数据集失败", e);
             }
             dataset = null;
         }
@@ -299,28 +299,28 @@ public class LanceVectorSearch implements Closeable, Serializable {
             try {
                 allocator.close();
             } catch (Exception e) {
-                LOG.warn("Failed to close allocator", e);
+                LOG.warn("关闭分配器失败", e);
             }
             allocator = null;
         }
     }
 
     /**
-     * Get RowType
+     * 获取 RowType
      */
     public RowType getRowType() {
         return rowType;
     }
 
     /**
-     * Create builder
+     * 创建构建器
      */
     public static Builder builder() {
         return new Builder();
     }
 
     /**
-     * Create vector searcher from LanceOptions
+     * 从 LanceOptions 创建向量检索器
      */
     public static LanceVectorSearch fromOptions(LanceOptions options) {
         return builder()
@@ -334,7 +334,7 @@ public class LanceVectorSearch implements Closeable, Serializable {
     }
 
     /**
-     * Builder
+     * 构建器
      */
     public static class Builder {
         private String datasetPath;
@@ -381,19 +381,19 @@ public class LanceVectorSearch implements Closeable, Serializable {
 
         private void validate() {
             if (datasetPath == null || datasetPath.isEmpty()) {
-                throw new IllegalArgumentException("Dataset path cannot be empty");
+                throw new IllegalArgumentException("数据集路径不能为空");
             }
             if (columnName == null || columnName.isEmpty()) {
-                throw new IllegalArgumentException("Column name cannot be empty");
+                throw new IllegalArgumentException("列名不能为空");
             }
             if (nprobes <= 0) {
-                throw new IllegalArgumentException("nprobes must be greater than 0");
+                throw new IllegalArgumentException("nprobes 必须大于 0");
             }
         }
     }
 
     /**
-     * Search result
+     * 检索结果
      */
     public static class SearchResult implements Serializable {
         private static final long serialVersionUID = 1L;
@@ -415,13 +415,13 @@ public class LanceVectorSearch implements Closeable, Serializable {
         }
 
         /**
-         * Get similarity score (inverse or negative of distance, depending on distance type)
+         * 获取相似度分数（距离的倒数或负数，取决于距离类型）
          */
         public double getSimilarity() {
             if (distance == 0) {
                 return 1.0;
             }
-            // For L2 distance, use 1 / (1 + distance) as similarity
+            // 对于 L2 距离，使用 1 / (1 + distance) 作为相似度
             return 1.0 / (1.0 + distance);
         }
 

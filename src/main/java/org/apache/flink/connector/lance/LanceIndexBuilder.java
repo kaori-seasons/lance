@@ -40,11 +40,11 @@ import java.util.Collections;
 import java.util.Optional;
 
 /**
- * Lance vector index builder.
+ * Lance 向量索引构建器。
  * 
- * <p>Supports building IVF_PQ, IVF_HNSW_PQ, and IVF_FLAT vector indices.
+ * <p>支持构建 IVF_PQ、IVF_HNSW_PQ、IVF_FLAT 三种类型的向量索引。
  * 
- * <p>Usage example:
+ * <p>使用示例：
  * <pre>{@code
  * LanceIndexBuilder builder = LanceIndexBuilder.builder()
  *     .datasetPath("/path/to/dataset")
@@ -92,33 +92,33 @@ public class LanceIndexBuilder implements Closeable, Serializable {
     }
 
     /**
-     * Build vector index
+     * 构建向量索引
      *
-     * @return Index build result
+     * @return 索引构建结果
      */
     public IndexBuildResult buildIndex() throws IOException {
-        LOG.info("Starting to build vector index, type: {}, column: {}, dataset: {}", 
+        LOG.info("开始构建向量索引，类型: {}，列: {}，数据集: {}", 
                 indexType, columnName, datasetPath);
         
         long startTime = System.currentTimeMillis();
         
         try {
-            // Initialize resources
+            // 初始化资源
             this.allocator = new RootAllocator(Long.MAX_VALUE);
             this.dataset = Dataset.open(datasetPath, allocator);
             
-            // Validate column exists
+            // 验证列是否存在
             validateColumn();
             
-            // Get distance metric type
+            // 获取距离度量类型
             DistanceType distanceType = toDistanceType(metricType);
             
-            // Build IVF parameters
+            // 构建 IVF 参数
             IvfBuildParams ivfParams = new IvfBuildParams.Builder()
                     .setNumPartitions(numPartitions)
                     .build();
             
-            // Build index based on index type
+            // 根据索引类型构建索引
             IndexType lanceIndexType;
             IndexParams indexParams;
             
@@ -166,14 +166,14 @@ public class LanceIndexBuilder implements Closeable, Serializable {
                     break;
                     
                 default:
-                    throw new IllegalArgumentException("Unsupported index type: " + indexType);
+                    throw new IllegalArgumentException("不支持的索引类型: " + indexType);
             }
             
-            // Create index
+            // 创建索引
             dataset.createIndex(
                     Collections.singletonList(columnName),
                     lanceIndexType,
-                    Optional.empty(),  // Index name, use default
+                    Optional.empty(),  // 索引名称，使用默认
                     indexParams,
                     replace
             );
@@ -181,7 +181,7 @@ public class LanceIndexBuilder implements Closeable, Serializable {
             long endTime = System.currentTimeMillis();
             long duration = endTime - startTime;
             
-            LOG.info("Vector index build completed, duration: {} ms", duration);
+            LOG.info("向量索引构建完成，耗时: {} ms", duration);
             
             return new IndexBuildResult(
                     true,
@@ -192,7 +192,7 @@ public class LanceIndexBuilder implements Closeable, Serializable {
                     null
             );
         } catch (Exception e) {
-            LOG.error("Failed to build vector index", e);
+            LOG.error("构建向量索引失败", e);
             return new IndexBuildResult(
                     false,
                     indexType,
@@ -205,20 +205,20 @@ public class LanceIndexBuilder implements Closeable, Serializable {
     }
 
     /**
-     * Validate vector column exists
+     * 验证向量列是否存在
      */
     private void validateColumn() throws IOException {
-        // Check if column exists in Schema
+        // 检查列是否存在于 Schema 中
         boolean columnExists = dataset.getSchema().getFields().stream()
                 .anyMatch(field -> field.getName().equals(columnName));
         
         if (!columnExists) {
-            throw new IOException("Vector column does not exist: " + columnName);
+            throw new IOException("向量列不存在: " + columnName);
         }
     }
 
     /**
-     * Convert distance metric type
+     * 转换距离度量类型
      */
     private DistanceType toDistanceType(LanceOptions.MetricType metricType) {
         switch (metricType) {
@@ -239,7 +239,7 @@ public class LanceIndexBuilder implements Closeable, Serializable {
             try {
                 dataset.close();
             } catch (Exception e) {
-                LOG.warn("Failed to close dataset", e);
+                LOG.warn("关闭数据集失败", e);
             }
             dataset = null;
         }
@@ -248,21 +248,21 @@ public class LanceIndexBuilder implements Closeable, Serializable {
             try {
                 allocator.close();
             } catch (Exception e) {
-                LOG.warn("Failed to close allocator", e);
+                LOG.warn("关闭分配器失败", e);
             }
             allocator = null;
         }
     }
 
     /**
-     * Create builder
+     * 创建构建器
      */
     public static Builder builder() {
         return new Builder();
     }
 
     /**
-     * Create index builder from LanceOptions
+     * 从 LanceOptions 创建索引构建器
      */
     public static LanceIndexBuilder fromOptions(LanceOptions options) {
         return builder()
@@ -280,7 +280,7 @@ public class LanceIndexBuilder implements Closeable, Serializable {
     }
 
     /**
-     * Builder
+     * 构建器
      */
     public static class Builder {
         private String datasetPath;
@@ -357,25 +357,25 @@ public class LanceIndexBuilder implements Closeable, Serializable {
 
         private void validate() {
             if (datasetPath == null || datasetPath.isEmpty()) {
-                throw new IllegalArgumentException("Dataset path cannot be empty");
+                throw new IllegalArgumentException("数据集路径不能为空");
             }
             if (columnName == null || columnName.isEmpty()) {
-                throw new IllegalArgumentException("Column name cannot be empty");
+                throw new IllegalArgumentException("列名不能为空");
             }
             if (numPartitions <= 0) {
-                throw new IllegalArgumentException("Number of partitions must be greater than 0");
+                throw new IllegalArgumentException("分区数必须大于 0");
             }
             if (numSubVectors != null && numSubVectors <= 0) {
-                throw new IllegalArgumentException("Number of sub-vectors must be greater than 0");
+                throw new IllegalArgumentException("子向量数必须大于 0");
             }
             if (numBits <= 0 || numBits > 16) {
-                throw new IllegalArgumentException("Quantization bits must be between 1 and 16");
+                throw new IllegalArgumentException("量化位数必须在 1-16 之间");
             }
         }
     }
 
     /**
-     * Index build result
+     * 索引构建结果
      */
     public static class IndexBuildResult implements Serializable {
         private static final long serialVersionUID = 1L;
